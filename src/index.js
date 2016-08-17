@@ -1,3 +1,5 @@
+"use strict";
+
 const path = require('path');
 const fs = require('fs');
 const JSON5 = require('json5');
@@ -13,10 +15,9 @@ const babelRootImport = require('babel-root-import/build/helper.js');
 const babelRootImportObj = babelRootImport.default ?
     new babelRootImport.default() : babelRootImport;
 
-let {
-    hasRootPathPrefixInString,
-    transformRelativeToRootPath
-} = babelRootImportObj;
+let hasRootPathPrefixInString = babelRootImportObj.hasRootPathPrefixInString;
+let transformRelativeToRootPath = babelRootImportObj.transformRelativeToRootPath;
+
 
 if (babelRootImport.default) {
     /* eslint-disable no-console */
@@ -33,13 +34,15 @@ function getConfigFromBabel(start) {
         const babelrcJson = JSON5.parse(fs.readFileSync(babelrc, 'utf8'));
         if (babelrcJson && Array.isArray(babelrcJson.plugins)) {
             const pluginConfig = babelrcJson.plugins.find(p => (
-                p[0] === 'babel-root-import'
+                p === 'babel-root-import' || p[0] === 'babel-root-import'
             ));
             // The src path inside babelrc are from the root so we have
             // to change the working directory for the same directory
             // to make the mapping to work properly
             process.chdir(path.dirname(babelrc));
-            return pluginConfig[1];
+            if (pluginConfig.length > 0) {
+                return pluginConfig[1];
+            }
         }
     }
     return getConfigFromBabel(path.dirname(start));
@@ -57,7 +60,7 @@ exports.interfaceVersion = 2;
  * @return {object}
  */
 exports.resolve = (source, file, config) => {
-    const opts = getConfigFromBabel(process.cwd());
+    const opts = getConfigFromBabel(process.cwd()) || {};
 
     let rootPathSuffix = '';
     let rootPathPrefix = '';
